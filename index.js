@@ -1,13 +1,12 @@
 'use strict';
 
 const rp = require('request-promise'),
-    config = require('./config'),
-    co = require('co');
+    config = require('./config');
 
 class RpWrapper {
     constructor(rp) {
         this._rp = rp;
-        this._REQUESTS_TIME_INTERVAL = 10000;
+        this._REQUESTS_TIME_INTERVAL = 11000;
         this._REQUEST_MAX_COUNT = 30;
         this._requestTimes = [];
     }
@@ -15,8 +14,8 @@ class RpWrapper {
     get() {
         let now = Date.now();
         if (this._requestTimes.length === this._REQUEST_MAX_COUNT) {
-            let firstRequestTime = this._requestTimes[this._requestTimes.length - 1];            
-            let requestTimeDelta = now - firstRequestTime;            
+            let firstRequestTime = this._requestTimes[this._requestTimes.length - 1];
+            let requestTimeDelta = now - firstRequestTime;
             if (requestTimeDelta < this._REQUESTS_TIME_INTERVAL) {
                 let delay = this._REQUESTS_TIME_INTERVAL - requestTimeDelta;
                 return new Promise((resolve, reject) => {
@@ -28,12 +27,12 @@ class RpWrapper {
             this._requestTimes.pop();
         }
         this._requestTimes.unshift(now);
-        return this._rp.get.apply(this._rp, arguments);        
+        return this._rp.get.apply(this._rp, arguments);
     }
 }
 
 class MovieInfoProvider {
-    
+
     constructor() {
         this._rp = new RpWrapper(rp);
     }
@@ -85,6 +84,7 @@ class MovieInfoProvider {
                     });
 
                     movies[index] = {
+                        id: movieResult.id,
                         link: `http://www.imdb.com/title/${movieResult.imdb_id}`,
                         SOURCE: 'themoviedb',
                         MEDIA: 'video',
@@ -105,76 +105,195 @@ class MovieInfoProvider {
 
             Promise.all(formattedMoviePromises).then(() => {
                 resolve(movies);
+            }, reject).catch(reject);
+        });
+    }
+
+    _searchPerson(name) {
+        return new Promise((resolve, reject) => {
+            rp.get({
+                url: `${config.theMovieDBApiURL}search/person`,
+                qs: { 'api_key': config.apiKey, query: name },
+                json: true
+            }).then(result => {
+                if (result.results && result.results.length > 0) {
+                    resolve(result.results[0].id);
+                } else {
+                    resolve(null);
+                }
             }).catch(reject);
         });
     }
 
-    _searchPerson(data) {
-
-    }
-
-    execute(attr) {
-        return co(function* () {
-            if (attr.title) {
-                let body = yield this._rp.get({
-                    url: `${config.theMovieDBApiURL}search/movie`,
-                    qs: { 'api_key': config.apiKey, query: attr.title },
-                    json: true
-                });                
-                let data = yield this._formatMovieData(body.results);
-                return data;
-            } else if (attr.cast) {
-                let personId = yield this._searchPerson(attr.cast);
-                let body = yield this._rp.get({
-                    url: `${config.theMovieDBApiURL}discover/movie`,
-                    json: true,
-                    qs: { 'api_key': config.apiKey, 'with_cast': personId },
-                });
-                return yield this._formatMovieData(body.results);
-            } else if (attr.director) {
-                let personId = yield this._searchPerson(attr.director);
-                let body = this._rp.get({
-                    url: `${config.theMovieDBApiURL}discover/movie`,
-                    json: true,
-                    qs: { 'api_key': config.apiKey, 'with_crew': personId },
-                });
-                let data = yield this._formatMovieData(body.results);
-                for (let i = 0; i < data.length;) {
-                    if (data[i].directors.indexOf(attr.director) === -1) {
-                        data.splice(i, 1);
+    _searchByTitle(title) {
+        return new Promise((resolve, reject) => {
+            this._rp.get({
+                url: `${config.theMovieDBApiURL}search/movie`,
+                qs: { 'api_key': config.apiKey, query: title },
+                json: true
+            }).then(body => {
+                let results = body.results;
+                //filter for title result only
+                for (let i = 0; i < results.length;) {
+                    if (results[i].original_title.toLowerCase().indexOf(title.toLowerCase()) === -1) {
+                        results.splice(i, 1);
                     } else {
                         i++;
                     }
                 }
-                return data;
-            } else if (attr.genre) {
-                let body = yield this._rp.get({
-                    url: `${config.theMovieDBApiURL}genre/movie/list`,
+                this._formatMovieData(results).then(resolve).catch(reject);
+            }).catch(reject);
+        });
+    }
+
+    _searchByCast(name) {
+        return new Promise((resolve, reject) => {
+            this._searchPerson(name).then(personId => {
+                let body = this._rp.get({
+                    url: `${config.theMovieDBApiURL}discover/movie`,
                     json: true,
-                    qs: { 'api_key': config.apiKey }
-                });
-                let attrGenre = attr.genre.trim().toLowerCase();
+                    qs: { 'api_key': config.apiKey, 'with_cast': personId },
+                }).then(body => {
+                    this._formatMovieData(body.results).then(resolve).catch(reject);
+                }).catch(reject);             
+            }).catch(reject);
+        });
+    }
+
+    _searchByDirector(directorName) {
+        return new Promise((resolve, reject) => {
+            let personId = this._searchPerson(directorName).then(personId => {
+                this._rp.get({
+                    url: `${config.theMovieDBApiURL}discover/movie`,
+                    json: true,
+                    qs: { 'api_key': config.apiKey, 'with_crew': personId },
+                }).then(body => {
+                    this._formatMovieData(body.results).then(data => {
+                        for (let i = 0; i < data.length;) {
+                            if (data[i].director.indexOf(directorName) === -1) {
+                                data.splice(i, 1);
+                            } else {
+                                i++;
+                            }
+                        }
+                        resolve(data);
+                    }).catch(reject);
+                }).catch(reject);
+            });
+        });
+    }
+
+    _searchByGenre(genre) {
+        return new Promise((resolve, reject) => {
+            this._rp.get({
+                url: `${config.theMovieDBApiURL}genre/movie/list`,
+                json: true,
+                qs: { 'api_key': config.apiKey }
+            }).then(body => {
+                let attrGenre = genre.trim().toLowerCase();
                 for (let genre of body.genres) {
                     if (genre.name.toLowerCase() === attrGenre) {
-                        let body = yield this._rp.get({
+                        this._rp.get({
                             url: `${config.theMovieDBApiURL}genre/${genre.id}/movies?`,
                             json: true,
                             qs: { 'api_key': config.apiKey }
-                        });
-                        let data = yield this._formatMovieData(body.results);
-                        return data;
+                        }).then(body => {
+                            this._formatMovieData(body.results).then(data => {
+                                resolve(data);
+                            }).catch(reject);
+                        }).catch(reject);                        
                     }
                 }
+            }).catch(reject);            
+        });
+    }
+
+    execute(input) {
+        let resultPromises = [];
+        let promise;
+        let result = [];
+        let outputPromises = [];
+        for (let attrs of input) {
+            let attrPromises = [];
+            for (let attrKey in attrs) {
+                if (attrKey === 'title') {
+                    promise = this._searchByTitle(attrs[attrKey]);
+                    attrPromises.push(promise);
+                } else if (attrKey === 'cast') {
+                    promise = this._searchByCast(attrs[attrKey]);
+                    attrPromises.push(promise);
+                } else if (attrKey === 'director') {
+                    promise = this._searchByDirector(attrs[attrKey]);
+                    attrPromises.push(promise);
+                } else if (attrKey === 'genre') {
+                    promise = this._searchByGenre(attrs[attrKey]);
+                    attrPromises.push(promise);
+                }
             }
-        }.bind(this));
+            //AND
+            let outputPromise = new Promise((resolve, reject) => {
+                Promise.all(attrPromises).then(result => {
+                    let endResult = null;
+                    if (result.length > 1) {
+                        endResult = result.reduce((prev, current) => {
+                            let output = [];
+                            for (let currentItem of current) {
+                                let found = false;
+                                for (let prevItem of prev) {
+                                    if (currentItem.id === prevItem.id) {
+                                        output.push(currentItem);
+                                        break;
+                                    }
+                                }
+                            }
+                            return output;
+                        });                        
+                    } else if (result.length > 0) {
+                        endResult = result[0];
+                    }
+                    resolve(endResult);
+                }, reject).catch(reject);
+            });
+            outputPromises.push(outputPromise);
+        }
+
+        //OR
+        return new Promise((resolve, reject) => {
+            Promise.all(outputPromises).then(andResults => {
+                let output = [];
+                for (let andResult of andResults) {
+                    for (let andResultItem of andResult) {
+                        let found = false;
+                        for (let outputItem of output) {
+                            if (outputItem.id === andResultItem.id) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            output.push(andResultItem);
+                        }
+                    }
+                }
+                output = output.map(item => {
+                    delete item.id;
+                    return item;
+                });
+                resolve(output);
+            }, reject).catch(reject);
+        });
+
     }
 
 }
 
 let movieInfo = new MovieInfoProvider();
-movieInfo.execute({ title: 'Terminator' }).then(console.log).catch(console.error);
+// movieInfo.execute({ title: 'Terminator' }).then(console.log).catch(console.error);
 // movieInfo.execute({ title: 'Terminator 2: Judgment Day' }).then(console.log).catch(console.error);
-//movieInfo.execute({ cast: 'James Cameron' }).then(console.log);
+movieInfo.execute([{ director: 'James Cameron', title: 'Terminator' }, {title: 'Titanic'}]).then(console.log).catch(error => {    
+    if (error.stack) console.error(error.stack);
+    else console.error(error);
+});
 //movieInfo.execute({ director: 'James Cameron' }).then(console.log);
 // movieInfo.execute({ genre: 'action' }).then(console.log);
 
