@@ -287,13 +287,13 @@ class MovieInfoProvider {
 
 }
 
-let movieInfo = new MovieInfoProvider();
+// let movieInfo = new MovieInfoProvider();
 // movieInfo.execute({ title: 'Terminator' }).then(console.log).catch(console.error);
 // movieInfo.execute({ title: 'Terminator 2: Judgment Day' }).then(console.log).catch(console.error);
-movieInfo.execute([{ director: 'James Cameron', title: 'Terminator' }, {title: 'Titanic'}]).then(console.log).catch(error => {    
-    if (error.stack) console.error(error.stack);
-    else console.error(error);
-});
+// movieInfo.execute([{ director: 'James Cameron', title: 'Terminator' }, {title: 'Titanic'}]).then(console.log).catch(error => {    
+//     if (error.stack) console.error(error.stack);
+//     else console.error(error);
+// });
 //movieInfo.execute({ director: 'James Cameron' }).then(console.log);
 // movieInfo.execute({ genre: 'action' }).then(console.log);
 
