@@ -46,7 +46,7 @@ class MovieInfoProvider {
     }
 
     static get ontologyAttributes() {
-        return ['title', 'cast', 'director', 'genre'];
+        return ['name', 'cast', 'director', 'genre'];
     }
 
     _formatMovieData(movies) {
@@ -216,7 +216,7 @@ class MovieInfoProvider {
         for (let attrs of input) {
             let attrPromises = [];
             for (let attrKey in attrs) {
-                if (attrKey === 'title') {
+                if (attrKey === 'name') {
                     promise = this._searchByTitle(attrs[attrKey]);
                     attrPromises.push(promise);
                 } else if (attrKey === 'cast') {
