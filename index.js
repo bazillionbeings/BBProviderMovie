@@ -174,7 +174,7 @@ class MovieInfoProvider {
                 }).then(body => {
                     this._formatMovieData(body.results).then(data => {
                         for (let i = 0; i < data.length;) {
-                            if (data[i].director.indexOf(directorName) === -1) {
+                            if (data[i].attributes.director.indexOf(directorName) === -1) {
                                 data.splice(i, 1);
                             } else {
                                 i++;
