@@ -38,11 +38,11 @@ class MovieInfoProvider {
     }
 
     static get ontologyClass() {
-        return 'MOVIES AND TV';
+        return 'MoviesAndTv';
     }
 
     static get ontologySubclass() {
-        return 'MOVIE AND SERIES';
+        return 'MovieAndSeries';
     }
 
     static get ontologyAttributes() {
@@ -84,20 +84,24 @@ class MovieInfoProvider {
                     });
 
                     movies[index] = {
+                        class: MovieInfoProvider.ontologyClass,
+                        subclass: MovieInfoProvider.ontologySubclass,
                         id: movieResult.id,
-                        link: `http://www.imdb.com/title/${movieResult.imdb_id}`,
-                        SOURCE: 'themoviedb',
-                        MEDIA: 'video',
+                        url: `http://www.imdb.com/title/${movieResult.imdb_id}`,
+                        webUrl: `http://www.imdb.com/title/${movieResult.imdb_id}`,
+                        source: 'themoviedb',
+                        media: 'video',
                         name: movieResult.title,
-                        tags: null,
-                        filmandbookgenre: formattedGenres,
-                        country: null,
-                        language: null,
-                        subtitle: null,
-                        director: directors,
-                        cast: formattedCast,
-                        movieorseries: 'movie'
+                        attributes: {
+                            filmandbookgenre: formattedGenres,
+                            director: directors,
+                            cast: formattedCast,
+                            movieorseries: 'movie'
+                        }
                     };
+                    if (movies[index].backgroundImageUrl) {
+                        movies[index].backgroundImageUrl = `http://image.tmdb.org/t/p/w780${movieResult.poster_path}`;
+                    }
                 }).catch(reject);
 
                 formattedMoviePromises.push(formattedMoviePromise);
@@ -208,7 +212,7 @@ class MovieInfoProvider {
         });
     }
 
-    execute(input) {
+    execute(input, limit) {
         let resultPromises = [];
         let promise;
         let result = [];
@@ -287,10 +291,10 @@ class MovieInfoProvider {
 
 }
 
-// let movieInfo = new MovieInfoProvider();
-// movieInfo.execute({ title: 'Terminator' }).then(console.log).catch(console.error);
-// movieInfo.execute({ title: 'Terminator 2: Judgment Day' }).then(console.log).catch(console.error);
-// movieInfo.execute([{ director: 'James Cameron', title: 'Terminator' }, {title: 'Titanic'}]).then(console.log).catch(error => {    
+let movieInfo = new MovieInfoProvider();
+movieInfo.execute([{ name: 'Terminator' }]).then(console.log).catch(console.error);
+// movieInfo.execute([{ name: 'Terminator 2: Judgment Day' }]).then(console.log).catch(console.error);
+// movieInfo.execute([{ director: 'James Cameron', name: 'Terminator' }, {title: 'Titanic'}]).then(console.log).catch(error => {    
 //     if (error.stack) console.error(error.stack);
 //     else console.error(error);
 // });
