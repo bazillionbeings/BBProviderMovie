@@ -90,8 +90,9 @@ class MovieInfoProvider {
                         url: `http://www.imdb.com/title/${movieResult.imdb_id}`,
                         webUrl: `http://www.imdb.com/title/${movieResult.imdb_id}`,
                         source: 'themoviedb',
-                        media: 'video',
+                        type: 'video',
                         name: movieResult.title,
+                        tags: [],
                         attributes: {
                             filmandbookgenre: formattedGenres,
                             director: directors,
@@ -292,7 +293,7 @@ class MovieInfoProvider {
 }
 
 // let movieInfo = new MovieInfoProvider();
-// movieInfo.execute([{ name: 'Terminator' }]).then(console.log).catch(console.error);
+// movieInfo.execute([{ name: 'Terminator' }]).then(result => console.dir(result, {depth: null})).catch(console.error);
 // movieInfo.execute([{ name: 'Terminator 2: Judgment Day' }]).then(console.log).catch(console.error);
 // movieInfo.execute([{ director: 'James Cameron', name: 'Terminator' }, {title: 'Titanic'}]).then(console.log).catch(error => {    
 //     if (error.stack) console.error(error.stack);
