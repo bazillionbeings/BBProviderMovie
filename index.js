@@ -90,14 +90,14 @@ class MovieInfoProvider {
                         url: `http://www.imdb.com/title/${movieResult.imdb_id}`,
                         webUrl: `http://www.imdb.com/title/${movieResult.imdb_id}`,
                         source: 'themoviedb',
-                        type: 'video',
+                        type: 'web',
                         name: movieResult.title,
                         tags: [],
                         attributes: {
-                            filmandbookgenre: formattedGenres,
+                            film_and_book_genre: formattedGenres,
                             director: directors,
                             cast: formattedCast,
-                            movieorseries: 'movie'
+                            movie_or_series: 'movie'
                         }
                     };
                     if (movies[index].backgroundImageUrl) {
